@@ -105,10 +105,11 @@
           </div>
         </div>
 
-        <!-- Error -->
-        <p v-if="error" class="mb-3 text-xs text-center" style="color:#F87171">
+        <!-- Error (form + server-side auth redirect errors) -->
+        <div v-if="error" class="mb-3 rounded-xl px-4 py-3 text-xs text-center"
+          style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#F87171">
           {{ error }}
-        </p>
+        </div>
 
         <!-- Submit -->
         <button @click="handleSubmit" :disabled="loading"
@@ -135,8 +136,9 @@
 <script setup lang="ts">
 definePageMeta({ layout: false })
 
-const { t } = useLocale()
-const auth  = useAuthStore()
+const { t }  = useLocale()
+const auth   = useAuthStore()
+const route  = useRoute()
 
 type Mode = 'signin' | 'signup'
 
@@ -152,6 +154,14 @@ const showPw    = ref(false)
 const loading   = ref(false)
 const error     = ref('')
 const confirmed = ref(false)
+
+// ── Show errors redirected from server-side auth callback ────────────────────
+onMounted(() => {
+  const authError = route.query.auth_error as string | undefined
+  if (authError) {
+    error.value = decodeURIComponent(authError)
+  }
+})
 
 function switchMode(m: Mode) {
   mode.value  = m
@@ -186,7 +196,7 @@ async function handleGoogle() {
   error.value   = ''
   try {
     await auth.signInWithGoogle()
-    // Browser is redirected to Google — page unloads, so loading stays true
+    // Browser redirects to Google — page unloads, loading stays true
   } catch (e: any) {
     error.value   = e?.message ?? 'Something went wrong'
     loading.value = false
