@@ -4,16 +4,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   compatibilityDate: '2025-05-01',
 
-  // ── Vercel SSR deployment ───────────────────
+  // ── Vercel SSR deployment ──────────────────────────────────────────────────
   ssr: true,
-  nitro: {
-    preset: 'vercel',
-  },
+  nitro: { preset: 'vercel' },
 
-  // ── Route rules: auth pages client-side only ─
+  // ── Auth pages: client-side only ──────────────────────────────────────────
   // Fixes: event.req.headers.get is not a function
-  // @supabase/ssr uses Web API Headers on server which
-  // crashes in Vercel Node.js runtime
+  // @supabase/ssr uses Web API Headers which crashes on Vercel Node.js runtime
   routeRules: {
     '/auth/**': { ssr: false },
   },
@@ -31,26 +28,30 @@ export default defineNuxtConfig({
   },
 
   supabase: {
-    url: process.env.SUPABASE_URL ?? '',
-    key: process.env.SUPABASE_ANON_KEY ?? '',
+    url:      process.env.SUPABASE_URL      ?? '',
+    key:      process.env.SUPABASE_ANON_KEY ?? '',
     redirect: false,
 
-    // ── PKCE fix: store code_verifier in cookies ──────────────────────────────
-    // OAuth redirect (Google → app) ဖြစ်တဲ့အခါ localStorage က clear ဖြစ်နိုင်တယ်
-    // Cookie ကတော့ OAuth redirect ကို survive လုပ်တယ် (sameSite: lax = top-level nav ✅)
+    // ── Cookie storage for auth session ───────────────────────────────────────
     cookieOptions: {
-      maxAge:   60 * 60 * 8, // 8 hours — PKCE verifier ကို ကြာကြာ မထားဘူး
-      sameSite: 'lax',       // OAuth cross-site redirect မှာ cookie ပါလာဖို့
-      secure:   true,        // HTTPS only (Vercel always HTTPS ✅)
-      path:     '/',         // app တစ်ခုလုံး အတွက်
+      maxAge:   60 * 60 * 8,
+      sameSite: 'lax',
+      secure:   true,
+      path:     '/',
     },
 
-    // ── Client auth options ───────────────────────────────────────────────────
+    // ── Implicit flow: tokens returned in URL hash (#access_token=...) ────────
+    // WHY implicit instead of pkce:
+    //   PKCE requires code_verifier storage across OAuth redirect.
+    //   Nuxt SSR + Vercel environment makes this unreliable (cookie/storage gap).
+    //   Implicit: tokens come directly in URL hash → client reads immediately.
+    //   No server-side exchange needed → no @supabase/ssr server import → no crash.
+    //   Can upgrade back to PKCE later with proper @supabase/ssr server setup.
     clientOptions: {
       auth: {
-        flowType:          'pkce',  // PKCE = most secure OAuth flow
-        detectSessionInUrl: true,   // callback URL ထဲက code ကို auto-detect
-        persistSession:     true,   // session ကို cookie မှာ persist လုပ်
+        flowType:          'implicit', // ← changed from 'pkce'
+        detectSessionInUrl: true,      // auto-processes #access_token in URL
+        persistSession:     true,
       },
     },
   },
