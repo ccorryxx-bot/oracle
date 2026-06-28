@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* ── Base ─────────────────────────────────────── */
+@layer base {
+  :root {
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui;
+    --color-bg:      #07070F;
+    --color-surface: #0D0D1A;
+    --color-border:  rgba(255, 255, 255, 0.07);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: #CBD5E1;
+    font-family: 'Inter', ui-sans-serif, system-ui;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* ── Utilities ───────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Animations ──────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
