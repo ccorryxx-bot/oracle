@@ -24,12 +24,33 @@
 // IMPORTANT — do NOT import @supabase/ssr or any package that is not listed
 // in package.json as a direct dependency.  Transitive deps are not reliably
 // bundled by Nitro for Vercel serverless functions → instant 500.
+//
+// IMPORTANT #2 — do NOT use Nitro's getQuery(event) here.
+//   On this project's current Vercel deployment, getQuery() internally builds
+//   `new URL(event.path)` with NO base argument. event.path is a relative
+//   string ("/auth/callback?code=..."), and `new URL()` throws
+//   `TypeError: Invalid URL` on relative input — confirmed in production
+//   runtime logs (statusCode 500, code: 'ERR_INVALID_URL') every time Google
+//   redirected back with ?code=. This single line was taking down 100% of
+//   OAuth logins. We parse the query string ourselves below with an explicit
+//   base, and never let a parse failure crash the handler.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default defineEventHandler(async (event) => {
-  const query            = getQuery(event)
-  const error            = query.error             as string | undefined
-  const errorDescription = query.error_description as string | undefined
+  let error: string | undefined
+  let errorDescription: string | undefined
+
+  try {
+    const rawUrl = event.node?.req?.url ?? event.path ?? ''
+    const url    = new URL(rawUrl, 'http://localhost') // base avoids ERR_INVALID_URL on relative paths
+    error            = url.searchParams.get('error') ?? undefined
+    errorDescription = url.searchParams.get('error_description') ?? undefined
+  } catch {
+    // Parsing failed for some unexpected reason — fall through and serve the
+    // JS bridge page anyway. pages/auth/confirm.vue will classify whatever
+    // ends up in the URL client-side. We never want a query-parsing edge case
+    // to be why a user can't log in.
+  }
 
   // ── Explicit OAuth provider error ─────────────────────────────────────────
   // Safe to 302 here: error cases never carry hash tokens, only query params.
