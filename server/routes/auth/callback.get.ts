@@ -25,18 +25,28 @@
 // in package.json as a direct dependency.  Transitive deps are not reliably
 // bundled by Nitro for Vercel serverless functions → instant 500.
 //
-// IMPORTANT #2 — do NOT use Nitro's getQuery(event) here.
-//   On this project's current Vercel deployment, getQuery() internally builds
-//   `new URL(event.path)` with NO base argument. event.path is a relative
-//   string ("/auth/callback?code=..."), and `new URL()` throws
-//   `TypeError: Invalid URL` on relative input — confirmed in production
-//   runtime logs (statusCode 500, code: 'ERR_INVALID_URL') every time Google
-//   redirected back with ?code=. This single line was taking down 100% of
-//   OAuth logins. We parse the query string ourselves below with an explicit
-//   base, and never let a parse failure crash the handler.
+// IMPORTANT #2 — do NOT use any Nitro h3 sugar helper that touches headers
+// in this file (getQuery, setResponseHeaders, sendRedirect, getRequestHeader).
+//   Root cause (confirmed against nuxt/nuxt#33800, a currently-open upstream
+//   issue): Nitro's PRODUCTION build occasionally miscompiles these helpers.
+//   In a correct build, getRequestHeader(event, name) safely branches on the
+//   request-object shape. In an affected production build, that call gets
+//   inlined/optimized into a direct `event.req.headers.get(name)`, which
+//   assumes a Web-standard Headers instance. On this deployment, event.req
+//   is the classic Node plain-object-headers shape, so `.get` doesn't exist
+//   and every one of these helpers throws — this is NOT a Vercel-specific or
+//   Supabase-specific bug, it reproduces on plain Node/Netlify/Railway builds
+//   too, since it lives in Nitro's own bundler output, not the host platform.
+//   We've now hit it twice in this exact file (getQuery → ERR_INVALID_URL,
+//   setResponseHeaders → "Cannot read properties of undefined (reading
+//   'set')"). Fix: talk to the underlying Node req/res objects directly via
+//   event.node.req / event.node.res, which use the plain classic Node HTTP
+//   API (.setHeader(), .statusCode, .end()) and are unaffected by this bug.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default defineEventHandler(async (event) => {
+  const res = event.node.res
+
   let error: string | undefined
   let errorDescription: string | undefined
 
@@ -53,10 +63,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // ── Explicit OAuth provider error ─────────────────────────────────────────
-  // Safe to 302 here: error cases never carry hash tokens, only query params.
+  // Safe to redirect here: error cases never carry hash tokens, only query
+  // params. Using raw res.setHeader/res.end instead of h3's sendRedirect()
+  // — same miscompilation risk applies to every h3 sugar helper in this file.
   if (error) {
     const msg = encodeURIComponent(errorDescription ?? error)
-    return sendRedirect(event, `/auth/login?auth_error=${msg}`, 302)
+    res.statusCode = 302
+    res.setHeader('location', `/auth/login?auth_error=${msg}`)
+    res.end()
+    return
   }
 
   // ── All other cases: serve the JS bridge page ─────────────────────────────
@@ -70,12 +85,10 @@ export default defineEventHandler(async (event) => {
   // BROWSER (not from this server handler) and forwards them to /auth/confirm.
   // This is the only way to keep hash-based tokens alive across a "redirect".
 
-  setResponseHeaders(event, {
-    'content-type':           'text/html;charset=UTF-8',
-    'cache-control':          'no-store, no-cache, must-revalidate',
-    'x-content-type-options': 'nosniff',
-    'referrer-policy':        'no-referrer',
-  })
+  res.setHeader('content-type', 'text/html;charset=UTF-8')
+  res.setHeader('cache-control', 'no-store, no-cache, must-revalidate')
+  res.setHeader('x-content-type-options', 'nosniff')
+  res.setHeader('referrer-policy', 'no-referrer')
 
   return `<!DOCTYPE html>
 <html lang="en">
