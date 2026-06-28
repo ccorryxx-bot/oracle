@@ -4,6 +4,12 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   compatibilityDate: '2025-05-01',
 
+  // ── Vercel SSR deployment ───────────────────
+  ssr: true,
+  nitro: {
+    preset: 'vercel',
+  },
+
   modules: ['@nuxtjs/supabase', '@pinia/nuxt'],
 
   css: ['~/assets/css/main.css'],
