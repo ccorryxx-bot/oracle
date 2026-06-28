@@ -86,7 +86,7 @@ const fullUrl      = ref('')
 const hashFragment = ref('')
 const allParams    = ref<Record<string, string>>({})
 
-// ── Error classifier ─────────────────────────────────────────────────────────
+// ── Error classifier ──────────────────────────────────────────────────────────
 interface ErrorInfo {
   icon:     string
   title:    string
@@ -97,6 +97,17 @@ interface ErrorInfo {
 function classifyError(raw: string): ErrorInfo {
   const r = raw.toLowerCase()
 
+  // PKCE code_verifier missing — cookie/localStorage cleared during OAuth redirect
+  if (r.includes('pkce') || r.includes('code verifier') || r.includes('code_verifier')) {
+    return {
+      icon:     '🔐',
+      title:    'PKCE Verifier မတွေ့ဘူး',
+      friendly: 'OAuth redirect ဖြစ်စဉ်မှာ browser cookie/storage clear ဖြစ်သွားတယ်။ ဒါမှမဟုတ် Private/Incognito mode သုံးနေတာ ဖြစ်နိုင်တယ်။',
+      action:   'ပြင်ဆင်ချက်: Normal browser window မှာ ထပ်ကြိုးစားပါ။ Private mode မသုံးနဲ့။',
+    }
+  }
+
+  // Google credentials / server-side exchange fail
   if (r.includes('unable to exchange external code') || r.includes('exchange external code')) {
     return {
       icon:     '⚙️',
@@ -105,6 +116,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'Fix: Supabase → Authentication → Providers → Google → Client ID & Secret ကို update လုပ်ပါ။',
     }
   }
+
   if (r.includes('email not confirmed')) {
     return {
       icon:     '📧',
@@ -113,6 +125,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'Spam folder ကိုပါ စစ်ကြည့်ပါ။',
     }
   }
+
   if (r.includes('invalid login credentials') || r.includes('invalid credentials')) {
     return {
       icon:     '🔑',
@@ -121,6 +134,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'ထပ်ကြိုးစားပါ သို့မဟုတ် Password reset လုပ်ပါ။',
     }
   }
+
   if (r.includes('user not found') || r.includes('no user')) {
     return {
       icon:     '👤',
@@ -129,6 +143,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'Sign Up tab ကို ရွေးပြီး account ဖန်တီးပါ။',
     }
   }
+
   if (r.includes('token') && r.includes('expired')) {
     return {
       icon:     '⏰',
@@ -137,6 +152,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'Login page မှ ထပ် request လုပ်ပါ။',
     }
   }
+
   if (r.includes('oauth') || r.includes('provider')) {
     return {
       icon:     '🔗',
@@ -145,6 +161,7 @@ function classifyError(raw: string): ErrorInfo {
       action:   'ခဏစောင့်ပြီး ထပ်ကြိုးစားပါ သို့မဟုတ် Admin ကို ဆက်သွယ်ပါ။',
     }
   }
+
   if (r.includes('no auth params') || r.includes('no valid')) {
     return {
       icon:     '🔍',
@@ -154,7 +171,7 @@ function classifyError(raw: string): ErrorInfo {
     }
   }
 
-  // Fallback — unknown error
+  // Fallback
   return {
     icon:     '❌',
     title:    'Authentication Error',
@@ -177,10 +194,10 @@ onMounted(async () => {
     }
     allParams.value = params
 
-    const errorParam = route.query.error        as string | undefined
+    const errorParam = route.query.error             as string | undefined
     const errorDesc  = route.query.error_description as string | undefined
-    const tokenHash  = route.query.token_hash   as string | undefined
-    const type       = route.query.type         as string | undefined
+    const tokenHash  = route.query.token_hash        as string | undefined
+    const type       = route.query.type              as string | undefined
 
     // ── OAuth implicit: hash contains access_token ──────────────────────────
     if (window.location.hash.includes('access_token')) {
@@ -193,18 +210,18 @@ onMounted(async () => {
       }
     }
 
-    // ── Error returned from provider ─────────────────────────────────────────
+    // ── Error returned from provider ──────────────────────────────────────────
     if (errorParam) {
       rawError.value = errorDesc ?? errorParam
       status.value   = 'error'
       return
     }
 
-    // ── PKCE / email confirmation OTP ────────────────────────────────────────
+    // ── PKCE / email confirmation OTP ─────────────────────────────────────────
     if (tokenHash && type) {
       const { error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
-        type: type as 'signup' | 'recovery' | 'invite' | 'email',
+        type:       type as 'signup' | 'recovery' | 'invite' | 'email',
       })
       if (error) throw error
       status.value = 'success'
@@ -212,7 +229,7 @@ onMounted(async () => {
       return
     }
 
-    // ── OAuth PKCE code exchange ──────────────────────────────────────────────
+    // ── OAuth PKCE code exchange ───────────────────────────────────────────────
     const code = route.query.code as string | undefined
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -222,7 +239,7 @@ onMounted(async () => {
       return
     }
 
-    // ── Check existing session ────────────────────────────────────────────────
+    // ── Check existing session ─────────────────────────────────────────────────
     const { data } = await supabase.auth.getSession()
     if (data.session) {
       status.value = 'success'
@@ -230,7 +247,7 @@ onMounted(async () => {
       return
     }
 
-    // ── No valid auth params ──────────────────────────────────────────────────
+    // ── No valid auth params ───────────────────────────────────────────────────
     rawError.value = 'No auth params found in URL. Google OAuth may not have completed.'
     status.value   = 'error'
 
