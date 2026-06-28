@@ -10,6 +10,14 @@ export default defineNuxtConfig({
     preset: 'vercel',
   },
 
+  // ── Route rules: auth pages client-side only ─
+  // Fixes: event.req.headers.get is not a function
+  // @supabase/ssr uses Web API Headers on server which
+  // crashes in Vercel Node.js runtime
+  routeRules: {
+    '/auth/**': { ssr: false },
+  },
+
   modules: ['@nuxtjs/supabase', '@pinia/nuxt'],
 
   css: ['~/assets/css/main.css'],
