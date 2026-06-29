@@ -1,6 +1,16 @@
 <template>
   <div>
 
+    <!-- ── Announcement Banner ──────────────────────────────────────────── -->
+    <Transition enter-active-class="transition-all duration-500" enter-from-class="opacity-0 -translate-y-2">
+      <div v-if="bannerVisible"
+        class="py-2.5 px-4 text-center text-xs font-medium border-b"
+        :style="bannerStyle">
+        📢 {{ bannerSettings?.message }}
+        <button class="ml-3 opacity-60 hover:opacity-100 transition-opacity" @click="bannerDismissed = true">✕</button>
+      </div>
+    </Transition>
+
     <!-- ── Activity Toast (bottom-right, fixed) ───────────────── -->
     <Transition enter-active-class="transition-all duration-500 ease-out"
       leave-active-class="transition-all duration-300 ease-in"
@@ -331,6 +341,21 @@ useSeoMeta({
   description: 'Buy & Sell premium white-label game websites. No DB cost. No Hosting cost. KBZPay & Wave Money supported.',
 })
 
+
+// ── Announcement Banner ──────────────────────────────────────────────────
+const bannerDismissed = ref(false)
+const { data: bannerSettings } = await useAsyncData('site-banner', async () => {
+  const { data } = await supabase.from('site_settings').select('value').eq('key', 'banner').maybeSingle()
+  return data?.value ?? null
+})
+const bannerVisible = computed(() =>
+  !bannerDismissed.value && bannerSettings.value?.enabled && bannerSettings.value?.message
+)
+const bannerStyle = computed(() => {
+  const t = bannerSettings.value?.type ?? 'info'
+  const m = { info: 'background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.2);color:#818CF8', success: 'background:rgba(52,211,153,0.08);border-color:rgba(52,211,153,0.18);color:#34D399', warning: 'background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.18);color:#F59E0B' }
+  return m[t] ?? m.info
+})
 const { t }    = useLocale()
 const supabase = useSupabaseClient()
 
