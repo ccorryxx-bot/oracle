@@ -690,10 +690,19 @@ function fmtPrice(p: number) {
 
 <style scoped>
 .field-input {
-  @apply w-full px-3 py-2.5 rounded-xl text-sm text-text outline-none transition-colors
-         placeholder:text-text-faint;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-text, #F1F1F3);
+  outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.07);
+}
+.field-input::placeholder {
+  color: var(--color-text-faint, #374151);
 }
 .field-input:focus {
   background: rgba(255,255,255,0.07);
