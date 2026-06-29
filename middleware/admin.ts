@@ -1,21 +1,19 @@
 // middleware/admin.ts
-// Protects all /admin/* routes — redirects non-admins to home
+// Guards all /admin/* routes — redirects to /admin/login (NOT main site login)
 
-const ADMIN_EMAILS = [
-  'admin@oraclemarket.mm',
-  // add more emails here
-]
+const ADMIN_EMAILS = ['admin@oraclemarket.mm']
 
-export default defineNuxtRouteMiddleware(async () => {
+export default defineNuxtRouteMiddleware(async (to) => {
+  // Skip guard on admin login page itself
+  if (to.path === '/admin/login') return
+
   const user = useSupabaseUser()
 
-  // Not logged in
-  if (!user.value) return navigateTo('/auth/login')
+  if (!user.value) return navigateTo('/admin/login')
 
-  // Not admin
   const isAdmin =
     ADMIN_EMAILS.includes(user.value.email ?? '') ||
     user.value.app_metadata?.role === 'admin'
 
-  if (!isAdmin) return navigateTo('/')
+  if (!isAdmin) return navigateTo('/admin/login')
 })
