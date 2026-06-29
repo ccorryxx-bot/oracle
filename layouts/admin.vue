@@ -43,14 +43,6 @@
       <!-- Bottom: back to site + signout -->
       <div class="px-3 pb-5 pt-2 space-y-1"
         style="border-top:1px solid rgba(255,255,255,0.05)">
-        <NuxtLink to="/"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-subtle
-                 hover:text-text hover:bg-white/4 transition-colors">
-          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Site
-        </NuxtLink>
         <button @click="signOut"
           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-subtle
                  hover:text-danger hover:bg-red-900/10 transition-colors">
