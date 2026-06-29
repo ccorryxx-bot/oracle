@@ -1,168 +1,112 @@
 <template>
-  <div class="min-h-screen">
-    <div v-if="!isAdmin" class="max-w-lg mx-auto px-4 py-32 text-center">
-      <p class="text-4xl mb-4">🔒</p>
-      <p class="font-display font-semibold text-text-strong">Access Restricted</p>
+  <div class="p-8 max-w-6xl">
+
+    <!-- Page header -->
+    <div class="mb-10">
+      <p class="text-xs uppercase tracking-widest text-text-subtle mb-1">Admin</p>
+      <h1 class="font-display font-bold text-text-strong text-2xl">Overview</h1>
+      <p class="text-sm text-text-subtle mt-1">{{ today }}</p>
     </div>
 
-    <div v-else class="max-w-6xl mx-auto px-4 py-12">
-
-      <!-- Header -->
-      <div class="mb-10">
-        <p class="text-xs uppercase tracking-widest text-text-subtle mb-2">Admin</p>
-        <h1 class="font-display font-bold text-text-strong text-2xl">Business Overview</h1>
+    <!-- KPI cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <div v-for="kpi in kpis" :key="kpi.label"
+        class="rounded-2xl p-5"
+        style="background:#0D0D1F;border:1px solid rgba(255,255,255,0.05)">
+        <p class="text-xs text-text-subtle mb-3">{{ kpi.label }}</p>
+        <p class="font-display font-bold text-text-strong text-3xl">{{ kpi.value }}</p>
+        <p v-if="kpi.sub" class="text-xs mt-2"
+          :class="kpi.positive ? 'text-success' : 'text-text-faint'">
+          {{ kpi.sub }}
+        </p>
       </div>
+    </div>
 
-      <!-- Stats grid -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-12 pb-10 border-b"
-        style="border-color:rgba(255,255,255,0.06)">
-        <div v-for="s in overviewStats" :key="s.label">
-          <p class="font-display font-bold text-text-strong text-2xl mb-1">{{ s.value }}</p>
-          <p class="text-xs text-text-subtle">{{ s.label }}</p>
-          <p v-if="s.sub" class="text-xs mt-0.5" :class="s.up ? 'text-success' : 'text-text-faint'">
-            {{ s.sub }}
-          </p>
+    <div class="grid lg:grid-cols-2 gap-8">
+
+      <!-- Top listings by views -->
+      <div class="rounded-2xl p-6"
+        style="background:#0D0D1F;border:1px solid rgba(255,255,255,0.05)">
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm font-semibold text-text-strong">Top Listings</p>
+          <NuxtLink to="/admin/listings"
+            class="text-xs text-text-subtle hover:text-accent transition-colors">
+            View all →
+          </NuxtLink>
         </div>
-      </div>
-
-      <div class="grid lg:grid-cols-2 gap-12">
-
-        <!-- Top listings by views -->
-        <div>
-          <p class="text-xs uppercase tracking-widest text-text-subtle mb-5">Top Listings · By Views</p>
-          <div v-if="pendingListings" class="space-y-3">
-            <div v-for="i in 5" :key="i" class="h-10 skeleton rounded-lg" />
-          </div>
-          <div v-else class="space-y-px">
-            <div v-for="(item, i) in topListings" :key="item.id"
-              class="flex items-center gap-4 py-3 border-b"
-              style="border-color:rgba(255,255,255,0.04)">
-              <span class="text-xs font-mono text-text-faint w-5">{{ i + 1 }}</span>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-text-strong truncate">{{ item.title }}</p>
-                <p class="text-xs text-text-subtle">{{ item.categories?.name ?? '—' }} · {{ formatMMK(item.price) }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-sm font-medium text-text-strong">{{ item.view_count ?? 0 }}</p>
-                <p class="text-xs text-text-subtle">views</p>
-              </div>
-              <span class="text-xs px-2 py-0.5 rounded-md shrink-0"
-                :style="statusStyle(item.status)">{{ item.status }}</span>
-            </div>
-          </div>
+        <div v-if="pending" class="space-y-3">
+          <div v-for="i in 5" :key="i" class="h-9 skeleton rounded-lg" />
         </div>
-
-        <!-- Demo requests -->
-        <div>
-          <p class="text-xs uppercase tracking-widest text-text-subtle mb-5">Demo Requests</p>
-          <div v-if="pendingDemos" class="space-y-3">
-            <div v-for="i in 4" :key="i" class="h-10 skeleton rounded-lg" />
-          </div>
-          <div v-else-if="demoRequests.length === 0"
-            class="py-10 text-center text-sm text-text-subtle">
-            No demo requests yet
-          </div>
-          <div v-else class="space-y-px">
-            <div v-for="req in demoRequests" :key="req.id"
-              class="flex items-center gap-4 py-3 border-b"
-              style="border-color:rgba(255,255,255,0.04)">
-              <div class="flex-1 min-w-0">
-                <p class="text-sm text-text-strong truncate">{{ req.name }}</p>
-                <p class="text-xs text-text-subtle truncate">{{ req.contact }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-xs text-text-subtle">{{ formatDate(req.created_at) }}</p>
-              </div>
-              <span class="text-xs px-2 py-0.5 rounded-md shrink-0"
-                :style="req.status === 'pending'
-                  ? 'background:rgba(245,158,11,0.12);color:#F59E0B'
-                  : 'background:rgba(52,211,153,0.1);color:#34D399'">
-                {{ req.status }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- All listings management -->
-      <div class="mt-12">
-        <p class="text-xs uppercase tracking-widest text-text-subtle mb-5">All Listings</p>
-        <div v-if="pendingAll" class="space-y-3">
-          <div v-for="i in 6" :key="i" class="h-12 skeleton rounded-lg" />
-        </div>
-        <div v-else class="space-y-px">
-          <div v-for="item in allListings" :key="item.id"
-            class="flex items-center gap-4 py-3.5 border-b group"
-            style="border-color:rgba(255,255,255,0.04)">
-            <div class="w-12 h-9 rounded-lg overflow-hidden shrink-0 bg-surface-hover">
-              <img v-if="item.thumbnail_url" :src="item.thumbnail_url" :alt="item.title"
-                class="w-full h-full object-cover" />
-            </div>
+        <div v-else class="space-y-1">
+          <div v-for="(item, i) in topListings" :key="item.id"
+            class="flex items-center gap-4 py-2.5">
+            <span class="text-xs font-mono text-text-faint w-4 shrink-0">{{ i + 1 }}</span>
             <div class="flex-1 min-w-0">
-              <p class="text-sm text-text-strong truncate">{{ item.title }}</p>
-              <p class="text-xs text-text-subtle">
-                {{ item.categories?.name ?? '—' }} ·
-                {{ formatMMK(item.price) }} ·
-                {{ item.view_count ?? 0 }} views
-              </p>
+              <p class="text-sm text-text truncate">{{ item.title }}</p>
             </div>
-            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button @click="toggleVerified(item)"
-                class="text-xs px-2.5 py-1 rounded-lg transition-colors"
-                :style="item.is_verified
-                  ? 'background:rgba(52,211,153,0.1);color:#34D399'
-                  : 'background:rgba(255,255,255,0.05);color:#64748B'">
-                {{ item.is_verified ? '✓ Verified' : 'Verify' }}
-              </button>
-              <button @click="toggleHot(item)"
-                class="text-xs px-2.5 py-1 rounded-lg transition-colors"
-                :style="item.is_hot
-                  ? 'background:rgba(239,68,68,0.12);color:#F87171'
-                  : 'background:rgba(255,255,255,0.05);color:#64748B'">
-                {{ item.is_hot ? '🔥 Hot' : 'Mark Hot' }}
-              </button>
-            </div>
+            <span class="text-xs text-text-subtle shrink-0">{{ item.view_count ?? 0 }} views</span>
             <span class="text-xs px-2 py-0.5 rounded-md shrink-0"
-              :style="statusStyle(item.status)">{{ item.status }}</span>
+              :style="statusBadge(item.status)">{{ item.status }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent demo requests -->
+      <div class="rounded-2xl p-6"
+        style="background:#0D0D1F;border:1px solid rgba(255,255,255,0.05)">
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm font-semibold text-text-strong">Recent Demo Requests</p>
+          <NuxtLink to="/admin/demo-requests"
+            class="text-xs text-text-subtle hover:text-accent transition-colors">
+            View all →
+          </NuxtLink>
+        </div>
+        <div v-if="pendingDemos" class="space-y-3">
+          <div v-for="i in 4" :key="i" class="h-9 skeleton rounded-lg" />
+        </div>
+        <div v-else-if="!recentDemos.length"
+          class="py-8 text-center text-sm text-text-subtle">No demo requests yet</div>
+        <div v-else class="space-y-1">
+          <div v-for="req in recentDemos" :key="req.id"
+            class="flex items-center gap-3 py-2.5">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm text-text truncate">{{ req.name }}</p>
+              <p class="text-xs text-text-subtle truncate">{{ req.contact }}</p>
+            </div>
+            <span class="text-xs text-text-faint shrink-0">{{ fmtDate(req.created_at) }}</span>
+            <span class="text-xs px-2 py-0.5 rounded-md shrink-0"
+              :style="req.status === 'pending'
+                ? 'background:rgba(245,158,11,0.12);color:#F59E0B'
+                : 'background:rgba(52,211,153,0.1);color:#34D399'">
+              {{ req.status }}
+            </span>
           </div>
         </div>
       </div>
 
     </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-useSeoMeta({ title: 'Admin — Oracle Market' })
+definePageMeta({ layout: 'admin', middleware: 'admin' })
+useSeoMeta({ title: 'Overview — Oracle Admin' })
 
-const user     = useSupabaseUser()
 const supabase = useSupabaseClient()
 
-const ADMIN_EMAIL = 'admin@oraclemarket.mm' // change to your email
+const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-const isAdmin = computed(() =>
-  user.value?.email === ADMIN_EMAIL ||
-  user.value?.app_metadata?.role === 'admin'
-)
-
-const { data: listingsData, pending: pendingListings } = await useAsyncData('admin-top', async () => {
-  if (!isAdmin.value) return []
+const { data: listings, pending } = await useAsyncData('admin-overview', async () => {
   const { data } = await supabase
     .from('portfolio_items')
-    .select('id,title,price,status,view_count,is_verified,is_hot,thumbnail_url,categories(name)')
+    .select('id,title,status,view_count,price,created_at')
     .order('view_count', { ascending: false })
-    .limit(50)
+    .limit(100)
   return data ?? []
 })
 
-const topListings = computed(() => (listingsData.value ?? []).slice(0, 8))
-const allListings  = computed(() => listingsData.value ?? [])
-
-const pendingAll = pendingListings
-
-const { data: demoRequests, pending: pendingDemos } = await useAsyncData('admin-demos', async () => {
-  if (!isAdmin.value) return []
+const { data: demos, pending: pendingDemos } = await useAsyncData('admin-demos', async () => {
   const { data } = await supabase
     .from('demo_requests')
     .select('*')
@@ -171,43 +115,35 @@ const { data: demoRequests, pending: pendingDemos } = await useAsyncData('admin-
   return data ?? []
 })
 
-const overviewStats = computed(() => {
-  const all = listingsData.value ?? []
+const topListings  = computed(() => (listings.value ?? []).slice(0, 6))
+const recentDemos  = computed(() => (demos.value ?? []).slice(0, 5))
+
+const kpis = computed(() => {
+  const all  = listings.value ?? []
+  const pub  = all.filter(i => i.status === 'published')
+  const sold = all.filter(i => i.status === 'sold')
   return [
-    { label: 'Total Listings',    value: all.length,                               sub: null,     up: false },
-    { label: 'Published',         value: all.filter(i => i.status === 'published').length, sub: null, up: false },
-    { label: 'Sold',              value: all.filter(i => i.status === 'sold').length,      sub: null, up: true  },
-    { label: 'Demo Requests',     value: demoRequests.value?.length ?? 0,           sub: null,     up: true  },
+    { label: 'Total Listings',  value: all.length,          sub: null,                    positive: false },
+    { label: 'Published',       value: pub.length,           sub: null,                    positive: true  },
+    { label: 'Sold',            value: sold.length,          sub: null,                    positive: true  },
+    { label: 'Demo Requests',   value: demos.value?.length ?? 0, sub: pendingCount.value + ' pending', positive: false },
   ]
 })
 
-function statusStyle(status: string) {
+const pendingCount = computed(() =>
+  (demos.value ?? []).filter((d: any) => d.status === 'pending').length
+)
+
+function statusBadge(s: string) {
   const m: Record<string, string> = {
     published: 'background:rgba(52,211,153,0.1);color:#34D399',
     draft:     'background:rgba(255,255,255,0.06);color:#64748B',
     sold:      'background:rgba(124,58,237,0.15);color:#A78BFA',
   }
-  return m[status] ?? m.draft
+  return m[s] ?? m.draft
 }
 
-function formatMMK(price: number) {
-  if (!price) return '—'
-  if (price >= 1_000_000) return (price / 1_000_000).toFixed(1) + 'M ks'
-  if (price >= 1_000)     return (price / 1_000).toFixed(0) + 'K ks'
-  return price + ' ks'
-}
-
-function formatDate(d: string) {
+function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
-
-async function toggleVerified(item: any) {
-  await supabase.from('portfolio_items').update({ is_verified: !item.is_verified }).eq('id', item.id)
-  item.is_verified = !item.is_verified
-}
-
-async function toggleHot(item: any) {
-  await supabase.from('portfolio_items').update({ is_hot: !item.is_hot }).eq('id', item.id)
-  item.is_hot = !item.is_hot
 }
 </script>
