@@ -31,6 +31,7 @@
 
   /* State */
   --color-success:        #34D399;
+  --color-warning:        #F59E0B;
   --color-danger:         #F87171;
   --color-danger-bg:      rgba(239, 68, 68, 0.08);
 }
